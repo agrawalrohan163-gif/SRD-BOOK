@@ -1,5 +1,8 @@
+'use cache'
+
 import type { MDXComponents } from 'mdx/types'
 import type { Metadata, Route } from 'next'
+import type { SupportedLocale } from '@/i18n/locales'
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page'
 import defaultMdxComponents from 'fumadocs-ui/mdx'
 import { setRequestLocale } from 'next-intl/server'
@@ -10,6 +13,8 @@ import { PlatformShareDisplay } from '@/app/[locale]/docs/_components/PlatformSh
 import { TradingFeeDisplay } from '@/app/[locale]/docs/_components/TradingFeeDisplay'
 import { WebSocketPlayground } from '@/app/[locale]/docs/_components/WebSocketPlayground'
 import { APIPage } from '@/components/docs/APIPage'
+import { ViewOptions } from '@/components/docs/LLMPageActions'
+import { withLocalePrefix } from '@/lib/locale-path'
 import { source } from '@/lib/source'
 
 function getMDXComponents(components?: MDXComponents): MDXComponents {
@@ -44,6 +49,8 @@ export default async function Page(props: PageProps<'/[locale]/docs/[[...slug]]'
     redirect('/docs/users')
   }
 
+  const localizedPageUrl = withLocalePrefix(page.url, params.locale as SupportedLocale)
+  const markdownUrl = `${localizedPageUrl}.mdx`
   const MDX = page.data.body
 
   return (
@@ -56,6 +63,9 @@ export default async function Page(props: PageProps<'/[locale]/docs/[[...slug]]'
     >
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
+      <div className="flex flex-wrap items-center gap-2 border-b pb-4">
+        <ViewOptions markdownUrl={markdownUrl} />
+      </div>
       <DocsBody className={isApiReferencePage ? 'max-w-none' : undefined}>
         <MDX components={getMDXComponents()} />
       </DocsBody>
