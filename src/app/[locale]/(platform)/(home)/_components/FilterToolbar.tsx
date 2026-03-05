@@ -1,6 +1,7 @@
 'use client'
 
 import type { LucideIcon } from 'lucide-react'
+import type { ReactNode } from 'react'
 import type { FilterState } from '@/app/[locale]/(platform)/_providers/FilterProvider'
 import { useAppKitAccount } from '@reown/appkit/react'
 import { BookmarkIcon, ClockIcon, DropletIcon, FlameIcon, HandFistIcon, Settings2Icon, SparklesIcon, TrendingUpIcon } from 'lucide-react'
@@ -23,6 +24,9 @@ import { cn } from '@/lib/utils'
 interface FilterToolbarProps {
   filters: FilterState
   onFiltersChange: (filters: Partial<FilterState>) => void
+  hideDesktopSecondaryNavigation?: boolean
+  desktopTitle?: string
+  secondaryNavigation?: ReactNode
 }
 
 interface BookmarkToggleProps {
@@ -69,11 +73,16 @@ function createDefaultFilters(overrides: Partial<FilterSettings> = {}): FilterSe
   }
 }
 
-export default function FilterToolbar({ filters, onFiltersChange }: FilterToolbarProps) {
+export default function FilterToolbar({
+  filters,
+  onFiltersChange,
+  hideDesktopSecondaryNavigation = false,
+  desktopTitle,
+  secondaryNavigation,
+}: FilterToolbarProps) {
   const { open } = useAppKit()
   const { isConnected } = useAppKitAccount()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [isNavigationTagsReady, setIsNavigationTagsReady] = useState(false)
   const [filterSettings, setFilterSettings] = useState<FilterSettings>(() => createDefaultFilters({
     frequency: filters.frequency,
     status: filters.status,
@@ -99,10 +108,6 @@ export default function FilterToolbar({ filters, onFiltersChange }: FilterToolba
     || filterSettings.hideCrypto !== BASE_FILTER_SETTINGS.hideCrypto
     || filterSettings.hideEarnings !== BASE_FILTER_SETTINGS.hideEarnings
   ), [filterSettings])
-
-  useEffect(() => {
-    setIsNavigationTagsReady(true)
-  }, [])
 
   useEffect(() => {
     setFilterSettings((prev) => {
@@ -193,6 +198,12 @@ export default function FilterToolbar({ filters, onFiltersChange }: FilterToolba
   return (
     <div className="flex w-full min-w-0 flex-col gap-3">
       <div className="flex w-full min-w-0 flex-col gap-3 md:flex-row md:items-center md:gap-4">
+        {desktopTitle && (
+          <h1 className="order-0 hidden text-xl font-semibold tracking-tight text-foreground lg:block">
+            {desktopTitle}
+          </h1>
+        )}
+
         <div className="order-1 flex w-full min-w-0 items-center gap-3 md:order-3 md:ml-auto md:w-auto md:min-w-0">
           <div className="min-w-0 flex-1">
             <FilterToolbarSearchInput
@@ -227,13 +238,23 @@ export default function FilterToolbar({ filters, onFiltersChange }: FilterToolba
           />
         )}
 
-        <Separator orientation="vertical" className="order-4 hidden shrink-0 md:order-2 md:flex" />
+        {secondaryNavigation && (
+          <>
+            <Separator
+              orientation="vertical"
+              className={cn('order-4 hidden shrink-0 md:order-2 md:flex', hideDesktopSecondaryNavigation && 'lg:hidden')}
+            />
 
-        <div
-          id="navigation-tags"
-          data-teleport-ready={isNavigationTagsReady ? 'true' : 'false'}
-          className="order-3 max-w-full min-w-0 flex-1 overflow-hidden md:order-1 md:flex md:items-center"
-        />
+            <div
+              className={cn(
+                'order-3 max-w-full min-w-0 flex-1 overflow-hidden md:order-1 md:flex md:items-center',
+                hideDesktopSecondaryNavigation && 'lg:hidden',
+              )}
+            >
+              {secondaryNavigation}
+            </div>
+          </>
+        )}
       </div>
 
       {isSettingsOpen && (

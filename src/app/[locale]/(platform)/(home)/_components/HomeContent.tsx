@@ -10,12 +10,18 @@ import { EventRepository } from '@/lib/db/queries/event'
 interface HomeContentProps {
   locale: string
   initialTag?: string
+  initialMainTag?: string
 }
 
-export default async function HomeContent({ locale, initialTag }: HomeContentProps) {
+export default async function HomeContent({
+  locale,
+  initialTag,
+  initialMainTag,
+}: HomeContentProps) {
   cacheTag(cacheTags.eventsGlobal)
   const resolvedLocale = locale as SupportedLocale
   const initialTagSlug = initialTag ?? 'trending'
+  const initialMainTagSlug = initialMainTag ?? initialTagSlug
 
   let initialEvents: Event[] = []
 
@@ -41,7 +47,11 @@ export default async function HomeContent({ locale, initialTag }: HomeContentPro
 
   return (
     <main className="container grid gap-4 py-4">
-      <HomeClient initialEvents={initialEvents} initialTag={initialTagSlug} />
+      <HomeClient
+        initialEvents={initialEvents}
+        initialTag={initialTagSlug}
+        initialMainTag={initialMainTagSlug}
+      />
     </main>
   )
 }
