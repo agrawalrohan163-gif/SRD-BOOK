@@ -164,6 +164,18 @@ function formatSignedCurrency(value: number) {
   return safeValue >= 0 ? `+${formatted}` : `-${formatted}`
 }
 
+function formatVolumeCurrency(value: number) {
+  if (!Number.isFinite(value)) {
+    return '—'
+  }
+
+  const safeValue = Math.abs(value)
+  return formatCurrency(safeValue, {
+    minimumFractionDigits: safeValue > 0 && safeValue < 1 ? 2 : 0,
+    maximumFractionDigits: safeValue > 0 && safeValue < 1 ? 2 : 0,
+  })
+}
+
 function formatValueOrDash(value?: number) {
   if (!Number.isFinite(value)) {
     return '—'
@@ -264,6 +276,32 @@ async function hydrateEntriesWithPortfolioPnl(
   })
 }
 
+function sortEntriesForDisplay(
+  entries: LeaderboardEntry[],
+  filters: LeaderboardFilters,
+  page: number,
+): LeaderboardEntry[] {
+  if (entries.length === 0 || filters.category !== 'overall' || filters.order !== 'profit') {
+    return entries
+  }
+
+  const sorted = [...entries].sort((left, right) => {
+    const leftPnl = Number.isFinite(left.pnl) ? Number(left.pnl) : Number.NEGATIVE_INFINITY
+    const rightPnl = Number.isFinite(right.pnl) ? Number(right.pnl) : Number.NEGATIVE_INFINITY
+    if (leftPnl !== rightPnl) {
+      return rightPnl - leftPnl
+    }
+
+    return normalizeWalletAddress(left.proxyWallet).localeCompare(normalizeWalletAddress(right.proxyWallet))
+  })
+
+  const rankOffset = (page - 1) * PAGE_SIZE
+  return sorted.map((entry, index) => ({
+    ...entry,
+    rank: String(rankOffset + index + 1),
+  }))
+}
+
 export default function LeaderboardClient({ initialFilters }: { initialFilters: LeaderboardFilters }) {
   const router = useRouter()
   const user = useUser()
@@ -331,7 +369,7 @@ export default function LeaderboardClient({ initialFilters }: { initialFilters: 
         if (controller.signal.aborted) {
           return
         }
-        setEntries(hydrated)
+        setEntries(sortEntriesForDisplay(hydrated, filters, page))
       })
       .catch((_error) => {
         if (controller.signal.aborted) {
@@ -524,10 +562,13 @@ export default function LeaderboardClient({ initialFilters }: { initialFilters: 
       return null
     }
 
-    const address = userEntry?.proxyWallet || userAddress
-    const rawUsername = userEntry?.userName || userEntry?.xUsername || user?.username || ''
+    const normalizedUserAddress = normalizeWalletAddress(userAddress)
+    const visibleEntry = entries.find(entry => normalizeWalletAddress(entry.proxyWallet) === normalizedUserAddress)
+    const sourceEntry = visibleEntry ?? userEntry
+    const address = sourceEntry?.proxyWallet || userAddress
+    const rawUsername = sourceEntry?.userName || sourceEntry?.xUsername || user?.username || ''
     const username = rawUsername || address
-    const rankNumber = Number(userEntry?.rank ?? Number.NaN)
+    const rankNumber = Number(sourceEntry?.rank ?? Number.NaN)
     const medalSrc = rankNumber === 1
       ? '/images/medals/gold.svg'
       : rankNumber === 2
@@ -544,23 +585,23 @@ export default function LeaderboardClient({ initialFilters }: { initialFilters: 
           : ''
 
     return {
-      rank: userEntry?.rank ?? '—',
+      rank: sourceEntry?.rank ?? '—',
       address,
       username,
-      profileImage: userEntry?.profileImage || user?.image || '',
-      pnl: userEntry?.pnl,
-      vol: userEntry?.vol,
+      profileImage: sourceEntry?.profileImage || user?.image || '',
+      pnl: sourceEntry?.pnl,
+      vol: sourceEntry?.vol,
       medalSrc,
       medalAlt,
     }
-  }, [userAddress, userEntry, user?.image, user?.username])
+  }, [entries, userAddress, userEntry, user?.image, user?.username])
   const pinnedProfitValue = pinnedEntry?.pnl
   const pinnedVolumeValue = pinnedEntry?.vol
   const pinnedProfitLabel = Number.isFinite(pinnedProfitValue)
     ? formatSignedCurrency(Number(pinnedProfitValue))
     : '—'
   const pinnedVolumeLabel = Number.isFinite(pinnedVolumeValue)
-    ? formatCurrency(Number(pinnedVolumeValue), { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+    ? formatVolumeCurrency(Number(pinnedVolumeValue))
     : '—'
   const pinnedMobileLabel = filters.order === 'profit' ? pinnedProfitLabel : pinnedVolumeLabel
   const pinnedMobileClass = filters.order === 'profit' ? profitColumnClass : volumeColumnClass
@@ -768,7 +809,7 @@ export default function LeaderboardClient({ initialFilters }: { initialFilters: 
                   const profitValue = Number(entry.pnl ?? 0)
                   const volumeValue = Number(entry.vol ?? 0)
                   const profitLabel = formatSignedCurrency(profitValue)
-                  const volumeLabel = formatCurrency(volumeValue, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+                  const volumeLabel = formatVolumeCurrency(volumeValue)
                   const mobileValueLabel = filters.order === 'profit' ? profitLabel : volumeLabel
                   const mobileValueClass = filters.order === 'profit' ? profitColumnClass : volumeColumnClass
                   const rankNumber = Number(rank)
